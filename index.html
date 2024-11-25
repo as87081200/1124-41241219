@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>會員註冊與登入</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h1>會員註冊與登入</h1>
+  <button id="registerBtn">註冊</button>
+  <button id="loginBtn">登入</button>
+  <div id="userInfo" style="display: none;">
+    <h2>使用者資訊</h2>
+    <img id="userPhoto" alt="使用者照片" width="100" style="border-radius: 50%;">
+    <p id="userName"></p>
+    <p id="userEmail"></p>
+    <p id="lastLogin"></p>
+    <button onclick="signOut()">登出</button>
+  </div>
+
+  <script>
+    // Firebase 設定
+    const firebaseConfig = {
+    apiKey: "AIzaSyCbkc5OkrEE6Qp7kWhQO4kytJt4kSaLtQw",
+    authDomain: "fir-c921d.firebaseapp.com",
+    projectId: "fir-c921d",
+    databaseURL: "https://fir-c921d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    storageBucket: "fir-c921d.firebasestorage.app",
+    messagingSenderId: "510990915888",
+    appId: "1:510990915888:web:3b3592742e8f587e7bd0f5",
+};
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    // 註冊按鈕
+    document.getElementById("registerBtn").addEventListener("click", registerUser);
+
+    // 登入按鈕
+    document.getElementById("loginBtn").addEventListener("click", loginUser);
+
+    // 註冊功能
+    function registerUser() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then((result) => {
+          const user = result.user;
+
+          // 檢查是否已註冊
+          const userRef = database.ref('users/' + user.uid);
+          userRef.once('value').then((snapshot) => {
+            if (snapshot.exists()) {
+              alert("此帳戶已註冊！");
+            } else {
+              const userData = {
+                name: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                registerTime: new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+              };
+              userRef.set(userData);
+              alert("註冊成功！");
+            }
+          });
+        })
+        .catch((error) => {
+          console.error("註冊錯誤:", error);
+        });
+    }
+
+    // 登入功能
+    function loginUser() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then((result) => {
+          const user = result.user;
+
+          // 更新最後登入時間
+          const lastLoginTime = new Date().toISOString();
+          const userRef = database.ref('users/' + user.uid);
+
+          userRef.once('value').then((snapshot) => {
+            if (snapshot.exists()) {
+              userRef.update({ lastLogin: lastLoginTime });
+              const data = snapshot.val();
+              document.getElementById("userName").textContent = `名稱: ${data.name}`;
+              document.getElementById("userEmail").textContent = `電子郵件: ${data.email}`;
+              document.getElementById("userPhoto").src = data.photoURL;
+              document.getElementById("lastLogin").textContent = `最後登入: ${lastLoginTime}`;
+              document.getElementById("userInfo").style.display = "block";
+            } else {
+              alert("此帳戶尚未註冊！");
+            }
+          });
+        })
+        .catch((error) => {
+          console.error("登入錯誤:", error);
+        });
+    }
+
+    // 登出功能
+    function signOut() {
+      auth.signOut().then(() => {
+        document.getElementById("userInfo").style.display = "none";
+        alert("已成功登出！");
+      });
+    }
+  </script>
+</body>
+</html>
